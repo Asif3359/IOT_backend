@@ -17,23 +17,46 @@ const int frameInterval = 100; // milliseconds (10 FPS)
 SocketIOclient socketIO;
 bool socketConnected = false;
 
-// Camera configuration (same as before)
-#define PWDN_GPIO_NUM     32
-#define RESET_GPIO_NUM    -1
-#define XCLK_GPIO_NUM      0
-#define SIOD_GPIO_NUM     26
-#define SIOC_GPIO_NUM     27
-#define Y9_GPIO_NUM       35
-#define Y8_GPIO_NUM       34
-#define Y7_GPIO_NUM       39
-#define Y6_GPIO_NUM       36
-#define Y5_GPIO_NUM       21
-#define Y4_GPIO_NUM       19
-#define Y3_GPIO_NUM       18
-#define Y2_GPIO_NUM        5
-#define VSYNC_GPIO_NUM    25
-#define HREF_GPIO_NUM     23
-#define PCLK_GPIO_NUM     22
+// Camera configuration - AI-Thinker ESP32-CAM (most common)
+// If this doesn't work, try the alternative configurations below
+#define CAMERA_MODEL_AI_THINKER  // Uncomment if using AI-Thinker board
+
+#ifdef CAMERA_MODEL_AI_THINKER
+  #define PWDN_GPIO_NUM     32
+  #define RESET_GPIO_NUM    -1
+  #define XCLK_GPIO_NUM      0
+  #define SIOD_GPIO_NUM     26
+  #define SIOC_GPIO_NUM     27
+  #define Y9_GPIO_NUM       35
+  #define Y8_GPIO_NUM       34
+  #define Y7_GPIO_NUM       39
+  #define Y6_GPIO_NUM       36
+  #define Y5_GPIO_NUM       21
+  #define Y4_GPIO_NUM       19
+  #define Y3_GPIO_NUM       18
+  #define Y2_GPIO_NUM        5
+  #define VSYNC_GPIO_NUM    25
+  #define HREF_GPIO_NUM     23
+  #define PCLK_GPIO_NUM     22
+#else
+  // Alternative: ESP32-CAM-MB (with different pinout)
+  #define PWDN_GPIO_NUM     -1
+  #define RESET_GPIO_NUM    -1
+  #define XCLK_GPIO_NUM     21
+  #define SIOD_GPIO_NUM     26
+  #define SIOC_GPIO_NUM     27
+  #define Y9_GPIO_NUM       35
+  #define Y8_GPIO_NUM       34
+  #define Y7_GPIO_NUM       39
+  #define Y6_GPIO_NUM       36
+  #define Y5_GPIO_NUM       19
+  #define Y4_GPIO_NUM       18
+  #define Y3_GPIO_NUM        5
+  #define Y2_GPIO_NUM        4
+  #define VSYNC_GPIO_NUM    25
+  #define HREF_GPIO_NUM     23
+  #define PCLK_GPIO_NUM     22
+#endif
 
 unsigned long lastFrameTime = 0;
 
@@ -45,15 +68,23 @@ void socketIOEvent(socketIOmessageType_t type, uint8_t * payload, size_t length)
   switch (type) {
     case sIOtype_DISCONNECT:
       Serial.println("❌ Socket.IO disconnected");
+      if (payload && length > 0) {
+        Serial.printf("   Reason: %.*s\n", length, payload);
+      }
       socketConnected = false;
       break;
 
     case sIOtype_CONNECT:
       Serial.println("✅ Socket.IO connected");
       Serial.printf("📡 Connected to: %s:%d\n", backendHost, backendPort);
-      socketIO.send(sIOtype_CONNECT, "/");
+      if (payload && length > 0) {
+        Serial.printf("   Server response: %.*s\n", length, payload);
+      }
+      // Small delay to ensure connection is stable before sending identification
+      delay(200);
       identifyWithServer();
       socketConnected = true;
+      Serial.println("📤 Sent identification to server");
       break;
 
     case sIOtype_EVENT: {
@@ -81,7 +112,13 @@ void socketIOEvent(socketIOmessageType_t type, uint8_t * payload, size_t length)
     }
 
     case sIOtype_ERROR:
-      Serial.printf("❌ Socket.IO error: %s\n", payload ? (char*)payload : "unknown");
+      Serial.printf("❌ Socket.IO error");
+      if (payload && length > 0) {
+        Serial.printf(": %.*s\n", length, payload);
+      } else {
+        Serial.println(": unknown error");
+      }
+      socketConnected = false;
       break;
 
     default:
@@ -137,17 +174,32 @@ void setup() {
     Serial.printf("🔌 Connecting to Socket.IO: wss://%s:%d/socket.io/?EIO=4&transport=websocket\n", 
                   backendHost, backendPort);
     
-    socketIO.beginSSL(backendHost, backendPort, "/socket.io/?EIO=4&transport=websocket");
+    // Set up event handler before connecting
     socketIO.onEvent(socketIOEvent);
+    
+    // Configure connection with proper parameters
+    // Note: beginSSL parameters: host, port, url, protocol, pingInterval, pongTimeout, disconnectTimeoutCount
+    socketIO.beginSSL(backendHost, backendPort, "/socket.io/?EIO=4&transport=websocket", "arduino", 25000, 30000, 5);
     socketIO.setReconnectInterval(5000);
+    socketIO.setExtraHeaders("Origin: https://iot-backend-uy96.onrender.com");
     
     Serial.println("🎥 Waiting for Socket.IO connection...");
+    Serial.println("   (This may take a few seconds for SSL handshake)");
   } else {
     Serial.println("❌ WiFi: FAILED");
   }
 }
 
 bool initCamera() {
+  Serial.println("📷 Starting camera initialization...");
+  Serial.println("   Checking camera module connection...");
+  
+  // Print pin configuration for debugging
+  Serial.printf("   Pin config - XCLK:%d, PCLK:%d, VSYNC:%d, HREF:%d\n", 
+                XCLK_GPIO_NUM, PCLK_GPIO_NUM, VSYNC_GPIO_NUM, HREF_GPIO_NUM);
+  Serial.printf("   Pin config - SDA:%d, SCL:%d, PWDN:%d, RESET:%d\n", 
+                SIOD_GPIO_NUM, SIOC_GPIO_NUM, PWDN_GPIO_NUM, RESET_GPIO_NUM);
+  
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
@@ -167,7 +219,7 @@ bool initCamera() {
   config.pin_sccb_scl = SIOC_GPIO_NUM;
   config.pin_pwdn = PWDN_GPIO_NUM;
   config.pin_reset = RESET_GPIO_NUM;
-  config.xclk_freq_hz = 20000000;  // Increased from 10MHz to 20MHz for better compatibility
+  config.xclk_freq_hz = 20000000;  // 20MHz - standard for OV2640
   config.pixel_format = PIXFORMAT_JPEG;
   
   // Try smaller frame size first if PSRAM is not available
@@ -175,48 +227,68 @@ bool initCamera() {
     config.frame_size = FRAMESIZE_VGA;  // 640x480
     config.fb_count = 1;
     config.fb_location = CAMERA_FB_IN_PSRAM;
+    Serial.println("   Using VGA resolution with PSRAM");
   } else {
     config.frame_size = FRAMESIZE_QVGA;  // 320x240 (smaller, uses less memory)
     config.fb_count = 1;
     config.fb_location = CAMERA_FB_IN_DRAM;
+    Serial.println("   Using QVGA resolution with DRAM (no PSRAM)");
   }
   
   config.jpeg_quality = 12;  // Lower = better quality (0-63)
   config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
 
   // Initialize camera
-  Serial.println("📷 Initializing camera...");
+  Serial.println("   Attempting camera initialization...");
   esp_err_t err = esp_camera_init(&config);
   
   if (err != ESP_OK) {
-    Serial.printf("❌ Camera init failed with error 0x%x\n", err);
+    Serial.printf("   ❌ Failed with error 0x%x\n", err);
     
     // Try with alternative configuration (without PSRAM)
-    Serial.println("🔄 Trying alternative configuration (no PSRAM)...");
+    Serial.println("   🔄 Retry 1: Using DRAM instead of PSRAM...");
     config.fb_location = CAMERA_FB_IN_DRAM;
     config.fb_count = 1;
     err = esp_camera_init(&config);
     
     if (err != ESP_OK) {
-      Serial.printf("❌ Camera init failed again with error 0x%x\n", err);
+      Serial.printf("   ❌ Retry 1 failed with error 0x%x\n", err);
       
       // Try with even smaller frame size
-      Serial.println("🔄 Trying with QVGA frame size...");
+      Serial.println("   🔄 Retry 2: Using QVGA (320x240) frame size...");
       config.frame_size = FRAMESIZE_QVGA;  // 320x240
       config.fb_location = CAMERA_FB_IN_DRAM;
       config.fb_count = 1;
       err = esp_camera_init(&config);
       
       if (err != ESP_OK) {
-        Serial.printf("❌ Camera init failed with QVGA, error 0x%x\n", err);
-        Serial.println("💡 Troubleshooting tips:");
-        Serial.println("   1. Check camera module connections (all pins properly soldered)");
-        Serial.println("   2. Verify camera module is OV2640 (most common for ESP32-CAM)");
-        Serial.println("   3. Ensure stable 5V power supply (use external power if needed)");
-        Serial.println("   4. Check if camera module is properly seated");
-        Serial.println("   5. Verify pin configuration matches your board");
-        Serial.println("   6. Try power cycling the ESP32-CAM");
-        return false;
+        Serial.printf("   ❌ Retry 2 failed with error 0x%x\n", err);
+        
+        // Try with CIF (even smaller)
+        Serial.println("   🔄 Retry 3: Using CIF (400x296) frame size...");
+        config.frame_size = FRAMESIZE_CIF;
+        err = esp_camera_init(&config);
+        
+        if (err != ESP_OK) {
+          Serial.printf("   ❌ Retry 3 failed with error 0x%x\n", err);
+          Serial.println("\n💡 Camera Troubleshooting Guide:");
+          Serial.println("   Error 0x106 = ESP_ERR_NOT_SUPPORTED");
+          Serial.println("   This usually means:");
+          Serial.println("   1. Camera module not detected (check connections)");
+          Serial.println("   2. Wrong camera module type (need OV2640)");
+          Serial.println("   3. Pin configuration mismatch");
+          Serial.println("   4. Power supply issues");
+          Serial.println("\n   Physical checks:");
+          Serial.println("   ✓ All camera pins properly soldered/connected");
+          Serial.println("   ✓ Camera module seated correctly");
+          Serial.println("   ✓ Stable 5V power (USB may not be enough)");
+          Serial.println("   ✓ Try external 5V power supply");
+          Serial.println("   ✓ Check if your board uses different pin config");
+          Serial.println("\n   If using a different ESP32-CAM board:");
+          Serial.println("   - Comment out #define CAMERA_MODEL_AI_THINKER");
+          Serial.println("   - Or modify pin definitions manually");
+          return false;
+        }
       }
     }
   }
@@ -360,14 +432,27 @@ void loop() {
   
   // Check WiFi connection
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("⚠️  WiFi disconnected, reconnecting...");
+    if (millis() % 5000 < 100) {  // Log only occasionally
+      Serial.println("⚠️  WiFi disconnected, reconnecting...");
+    }
     socketConnected = false;
     connectWiFi();
     delay(5000);
     return;
   }
 
-  // Send frames at specified interval
+  // Log connection status occasionally
+  static unsigned long lastStatusLog = 0;
+  if (millis() - lastStatusLog > 30000) {  // Every 30 seconds
+    if (socketIO.isConnected()) {
+      Serial.println("✅ Socket.IO: Still connected");
+    } else {
+      Serial.println("⚠️  Socket.IO: Not connected");
+    }
+    lastStatusLog = millis();
+  }
+
+  // Send frames at specified interval (only if camera is working)
   unsigned long currentTime = millis();
   if (currentTime - lastFrameTime >= frameInterval) {
     sendFrameViaWebSocket();
