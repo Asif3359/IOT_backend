@@ -70,12 +70,18 @@ router.post('/frame', rawBodyMiddleware, function(req, res) {
       esp32Status.frameCount = frameCount;
       app.set('esp32Status', esp32Status);
 
-      // Broadcast to all connected Socket.IO clients
-      var io = app.get('io');
-      if (io) {
-        io.emit('frame', {
+      // Broadcast to all connected WebSocket clients
+      var wss = app.get('wss');
+      if (wss) {
+        var frameMessage = JSON.stringify({
+          type: 'frame',
           image: latestFrame.toString('base64'),
           timestamp: Date.now(),
+        });
+        wss.clients.forEach(function(client) {
+          if (client.readyState === 1) { // WebSocket.OPEN = 1
+            client.send(frameMessage);
+          }
         });
       }
 
@@ -310,7 +316,8 @@ router.post('/predict/:filename', async function(req, res) {
  */
 router.get('/status', function(req, res) {
   var esp32Status = req.app.get('esp32Status');
-  var connectedClients = req.app.get('io') ? req.app.get('io').engine.clientsCount : 0;
+  var wss = req.app.get('wss');
+  var connectedClients = wss ? wss.clients.size : 0;
   
   res.json({
     esp32: esp32Status,
