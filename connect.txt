@@ -1,0 +1,7 @@
+Wiring (Flash Mode)
+Use the wiring you shared, and make sure GPIO0 is held LOW during reset/power-up:
+ESP32-CAM 5V → DevKit 5V
+ESP32-CAM GND → DevKit GND
+ESP32-CAM U0R (RX) → DevKit TX0 (GPIO1)
+ESP32-CAM U0T (TX) → DevKit RX0 (GPIO3)
+GPIO0 → GND (only while uploading)
