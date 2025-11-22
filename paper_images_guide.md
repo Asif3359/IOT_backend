@@ -7,14 +7,14 @@
 **What to include:**
 - Four main components in blocks:
   - **Hardware Platform** (left): 4-wheel robot, ESP32-CAM, motors, water pump
-  - **Backend Server** (center-top): Node.js WebSocket server, REST API
-  - **ML Model** (center-bottom): EfficientNet-B3, CropGuardian.h5
+  - **Backend Server** (center-top): Node.js WebSocket server, REST API, PyTorch inference
+  - **ML Model** (center-bottom): ResNet50 (from HuggingFace), 94 disease classes, BD Crop Dataset
   - **Mobile App** (right): React Native interface
 - Arrows showing data flow:
-  - Camera → Backend (video frames)
+  - Camera → Backend (video frames via WebSocket)
   - Mobile App → Backend (control commands)
   - Backend → Robot (movement commands)
-  - Image → ML Model → Backend → Mobile (prediction results)
+  - Image → ML Model (ResNet50 inference) → Backend → Mobile (prediction results + Groq AI remedies)
 - Use professional colors (blue for IoT components, green for ML, orange for mobile)
 
 **Tools to create:**
@@ -25,7 +25,32 @@
 
 ---
 
-### 2. **Hardware Component Diagram** (Suggested addition)
+### 2. **Model Architecture Diagram** (Highly Recommended)
+**Filename:** `model_architecture.png`
+**What to include:**
+- Visual representation of ResNet50 architecture:
+  - Input layer (224x224x3 RGB image)
+  - ResNet50 backbone (pre-trained on ImageNet) with residual blocks
+  - Custom classifier head:
+    - Linear(2048 → 512)
+    - ReLU activation
+    - Dropout(0.2)
+    - Linear(512 → 94)
+  - Output: 94 disease class probabilities
+- Annotate key features:
+  - "Pre-trained weights from ImageNet"
+  - "HuggingFace Model: Saon110/bd-crop-vegetable-plant-disease-model"
+  - "96.39% test accuracy"
+  - "94 disease classes across 10 BD crops"
+
+**Tools to create:**
+- Draw.io with neural network shapes
+- Python visualization (e.g., torchviz, visualkeras)
+- PowerPoint with shapes and arrows
+
+---
+
+### 3. **Hardware Component Diagram** (Suggested addition)
 **Filename:** `hardware_components.png`
 **What to include:**
 - Labeled photo or diagram of the actual robot showing:
@@ -45,19 +70,20 @@
 
 ---
 
-### 3. **System Workflow Diagram** (Suggested addition)
+### 4. **System Workflow Diagram** (Suggested addition)
 **Filename:** `workflow_diagram.png`
 **What to include:**
 - Flowchart showing the 7-step process:
-  1. Image Acquisition (camera icon)
-  2. Image Transmission (upload arrow)
-  3. Preprocessing (resize/normalize)
-  4. Inference (neural network icon)
-  5. Post-processing (Groq AI)
-  6. Result Delivery (mobile screen)
-  7. Treatment Application (water pump)
+  1. Image Acquisition (ESP32-CAM captures 1600x1200 image)
+  2. Image Transmission (HTTP POST to backend)
+  3. Preprocessing (Resize 256→224, normalize with ImageNet stats)
+  4. Inference (ResNet50 model - 94 class prediction)
+  5. Post-processing (Groq AI generates remedies based on disease)
+  6. Result Delivery (Results sent to React Native mobile app)
+  7. Treatment Application (User activates water pump via app)
 - Use standard flowchart symbols
 - Different colors for different stages (capture=blue, processing=green, action=orange)
+- Annotate model source: "HuggingFace: Saon110/bd-crop-vegetable-plant-disease-model"
 
 **Tools to create:**
 - Lucidchart
@@ -67,7 +93,7 @@
 
 ---
 
-### 4. **Mobile App Screenshots** (Suggested addition)
+### 5. **Mobile App Screenshots** (Suggested addition)
 **Filename:** `mobile_app_interface.png`
 **What to include:**
 - Composite image showing 3-4 app screens:
@@ -86,44 +112,51 @@
 
 ---
 
-### 5. **Model Performance Graphs** (Suggested addition)
+### 6. **Model Performance Graphs** (Suggested addition)
 **Filename:** `model_performance.png`
 **What to include:**
 Two graphs side-by-side:
-- **Left:** Training/Validation accuracy over epochs (line graph)
-- **Right:** Confusion matrix for disease classes (heatmap)
+- **Left:** Model accuracy comparison (bar chart showing test accuracy: 96.39%, validation: 96.64%)
+- **Right:** Class distribution across 10 crop types (pie chart or bar chart)
 
 **How to create:**
 - Python with matplotlib/seaborn:
 
 ```python
 import matplotlib.pyplot as plt
-import seaborn as sns
+import numpy as np
 
-# Training history plot
 plt.figure(figsize=(12, 5))
+
+# Subplot 1: Accuracy metrics
 plt.subplot(1, 2, 1)
-plt.plot(history['accuracy'], label='Training')
-plt.plot(history['val_accuracy'], label='Validation')
-plt.xlabel('Epoch')
-plt.ylabel('Accuracy')
-plt.legend()
-plt.title('Model Training Performance')
+metrics = ['Test Accuracy', 'Validation Accuracy']
+values = [96.39, 96.64]
+bars = plt.bar(metrics, values, color=['#4ECDC4', '#45B7D1'])
+plt.ylim([95, 97])
+plt.ylabel('Accuracy (%)')
+plt.title('ResNet50 Model Performance\n(94 Disease Classes)')
+for bar, val in zip(bars, values):
+    plt.text(bar.get_x() + bar.get_width()/2, val + 0.1, f'{val}%', 
+             ha='center', va='bottom', fontweight='bold')
 
-# Confusion matrix
+# Subplot 2: Crop coverage
 plt.subplot(1, 2, 2)
-sns.heatmap(confusion_matrix, annot=True, fmt='d', cmap='Blues')
-plt.title('Confusion Matrix')
-plt.xlabel('Predicted')
-plt.ylabel('Actual')
-
+crops = ['Banana', 'Cauliflower', 'Corn', 'Cotton', 'Guava', 
+         'Jute', 'Mango', 'Papaya', 'Potato', 'Rice', 'Sugarcane', 
+         'Tea', 'Tomato', 'Wheat']
+# Approximate class counts per crop
+class_counts = [9, 4, 4, 4, 10, 3, 8, 8, 10, 10, 5, 8, 9, 2]
+plt.barh(crops, class_counts, color='#95E1D3')
+plt.xlabel('Number of Disease Classes')
+plt.title('Disease Classes per Crop Type\n(Total: 94 classes)')
 plt.tight_layout()
 plt.savefig('model_performance.png', dpi=300, bbox_inches='tight')
 ```
 
 ---
 
-### 6. **Field Test Results Photo** (Suggested addition)
+### 7. **Field Test Results Photo** (Suggested addition)
 **Filename:** `field_deployment.png`
 **What to include:**
 - Real photo of the robot in a crop field
@@ -139,7 +172,7 @@ plt.savefig('model_performance.png', dpi=300, bbox_inches='tight')
 
 ---
 
-### 7. **Comparison Bar Chart** (Suggested addition)
+### 8. **Comparison Bar Chart** (Suggested addition)
 **Filename:** `performance_comparison.png`
 **What to include:**
 - Bar chart comparing Manual vs CropGuardian on:
@@ -235,17 +268,23 @@ plt.savefig('performance_comparison.png', dpi=300, bbox_inches='tight')
 ## Priority Order
 
 1. **MUST HAVE** (Required for paper):
-   - System Architecture Diagram (already referenced in paper)
+   - System Architecture Diagram (already referenced in paper as Fig. 1)
 
 2. **HIGHLY RECOMMENDED** (Will significantly improve paper quality):
+   - Model Architecture Diagram (ResNet50 structure with custom classifier)
    - Hardware Component Diagram
+   - System Workflow Diagram (7-step disease detection process)
    - Mobile App Screenshots
-   - System Workflow Diagram
 
 3. **NICE TO HAVE** (Additional visual support):
-   - Model Performance Graphs
-   - Comparison Bar Chart
+   - Model Performance Graphs (accuracy metrics, crop coverage)
+   - Comparison Bar Chart (Manual vs CropGuardian)
    - Field Test Photos
+
+**NEW IMPORTANT NOTE:** Since you're using a pre-trained model from HuggingFace (Saon110/bd-crop-vegetable-plant-disease-model), make sure to:
+- Clearly label the model source in all diagrams
+- Emphasize the integration aspect (not model training)
+- Highlight the Bangladesh-specific crop focus (94 classes, 10 crops)
 
 ---
 

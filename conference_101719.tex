@@ -49,11 +49,11 @@ Dhaka, Bangladesh \\
 \maketitle
 
 \begin{abstract}
-Crop diseases have a drastic impact on agricultural productivity as they cause huge losses in yield and economic consequences. Conventional techniques of detecting diseases are laborious, time consuming and in most cases lead to delayed interventions. In the given paper, CropGuardian which is an intelligent IoT-based system of automated crop disease detection and treatment through the fusion of autonomous mobile robotics, real-time camera streaming, and deep learning is introduced. The system uses ESP32-CAM to stream the video, deep learning model based on EfficientNet and trained on the PlantVillage data to reach the accuracy of 96.5 percent, and React Native that provides mobile application to monitor and control the system remotely. This is possible because the autonomous four-wheeled robotic platform allows it to navigate through the crop fields precisely and an inbuilt water pump system is used to dispense medicine in targeted areas. Groq AI is used to improve real-time disease prediction to offer farmers some actionable remedies. Field tests prove that the system is effective in the early detection of diseases and automated treatment, and 78 percent fewer people have to work with it and 85 percent faster than it is done traditionally.
+Crop diseases have a drastic impact on agricultural productivity as they cause huge losses in yield and economic consequences. Conventional techniques of detecting diseases are laborious, time consuming and in most cases lead to delayed interventions. In the given paper, CropGuardian which is an intelligent IoT-based system of automated crop disease detection and treatment through the fusion of autonomous mobile robotics, real-time camera streaming, and deep learning is introduced. The system uses ESP32-CAM to stream the video, a pre-trained ResNet50-based deep learning model specifically trained on Bangladesh crop diseases achieving 96.39 percent accuracy across 94 disease conditions in 10 major crop types, and React Native that provides mobile application to monitor and control the system remotely. This is possible because the autonomous four-wheeled robotic platform allows it to navigate through the crop fields precisely and an inbuilt water pump system is used to dispense medicine in targeted areas. Groq AI is used to improve real-time disease prediction to offer farmers some actionable remedies. Field tests prove that the system is effective in the early detection of diseases and automated treatment, and 78 percent fewer people have to work with it and 85 percent faster than it is done traditionally.
 \end{abstract}
 
 \begin{IEEEkeywords}
-IoT, Crop Disease Detection, Deep Learning, EfficientNet, Mobile Robotics, Precision Agriculture, Real-Time Monitoring, React Native
+IoT, Crop Disease Detection, Deep Learning, ResNet50, Mobile Robotics, Precision Agriculture, Real-Time Monitoring, React Native, Bangladesh Agriculture
 \end{IEEEkeywords}
 
 \section{Introduction}
@@ -66,7 +66,8 @@ This paper presents CropGuardian, a comprehensive IoT-based system that addresse
 \begin{itemize}
 \item Autonomous four-wheeled mobile robotic platform for field navigation
 \item ESP32-CAM module for real-time video streaming and image capture
-\item Deep learning model based on EfficientNet architecture trained on PlantVillage dataset React Native mobile application for remote monitoring and control
+\item Pre-trained ResNet50-based deep learning model trained on Bangladesh crop disease dataset covering 94 disease conditions across 10 major crop types
+\item React Native mobile application for remote monitoring and control
 \item Automated medicine dispensing system with integrated water pump
 \item AI-powered remedy recommendations using Groq API
 \end{itemize}
@@ -77,10 +78,10 @@ The system enables farmers to remotely monitor crop health through live video st
 
 The key contributions of this work are:
 \begin{enumerate}
-\item Design and Implementation System Design and Implementation of autonomous mobile robotic system to monitor and treat crop diseases.
-\item Live video streaming and remote control are supposed to provide the opportunity to use the device as an accurate navigation device.
-\item Development of a valid disease recognition system with a 96.5 accuracy score on the data in the PlantVillage database.
-\item Introduction of mobile end-to-end application to communicate with farmers and manage its system.
+\item Design and Implementation of autonomous mobile robotic system to monitor and treat crop diseases with integrated hardware and software components.
+\item Live video streaming and remote control interface providing real-time field navigation and monitoring capabilities.
+\item Integration of a pre-trained ResNet50-based disease recognition model achieving 96.39 percent accuracy across 94 disease conditions specific to Bangladesh agriculture.
+\item Development of comprehensive mobile application for farmer-system interaction and remote management.
 \item Manual intervention reduction of 78 percent and 85 percent response time improvement were both field-validated.
 \end{enumerate}
 
@@ -98,6 +99,12 @@ CropGuardian differs from existing work by providing an end-to-end solution inte
 
 \section{System Architecture}
 The CropGuardian system has four primary compo-nents, including (1) Hardware Platform, (2) Deep Learning Model, (3) Backend Server, and (4) Mobile Application. The system architecture is shown in figure \ref{fig:architecture}.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.45\textwidth]{system_architecture.png}}
+\caption{CropGuardian System Architecture showing hardware components, backend server with PyTorch inference, ResNet50 ML model from HuggingFace, and React Native mobile application.}
+\label{fig:architecture}
+\end{figure}
 
 \subsection{Hardware Platform}
 
@@ -121,21 +128,28 @@ Communication Node.js and Flask backend server that coordinates between mobile c
 
 \textbf{RESTful API:} This offers a set of HTTP endpoints to car control (/car/control), monitor its status (/car/status, /camera/status), and capture image and predict disease (/camera/capture).
 
-\textbf{ML Service Integration:} Interface to cloud based machine learning disease prediction service. The image information is transferred as HTTP POST using multipart/form-data encoding. The service answers back disease classification, score of confidence, level of severity and treatment recommendations.
+\textbf{ML Service Integration:} Connection to machine learning disease prediction service on the cloud based on ResNet50 model loaded with HuggingFace Hub. The data transfer of images is done through HTTP POST with multipart/form-data encoding. The service can make inference and provide a disease type out of 94 potential diseases, a score of confidence, the level of disease severity, and recommendation of the treatment in context of Bangladesh agricultural practices.
 
 \textbf{AI-Powered Remedies:} Implies the use of Groq API to provide contextual and actionable advice depending on the identified disease, type of crop, and severity. This will give the farmers certain measures on how to apply treatment, preventive procedures, and after actions.
 
 \subsection{Deep Learning Model}
 
-The disease detection model uses training transfer learning with EfficientNet architecture:
+The disease detection system utilizes a pre-trained ResNet50-based model specifically developed for Bangladesh crop diseases \cite{b13}:
 
-\textbf{Dataset:} PlantVillage dataset \cite{b4} with 54,305 images in 38 disease classes including but not limited to tomato, potato, pepper etc crops. To enhance generalization, images are augmented by rotation, flipping, and varying the brightness of them.
+\textbf{Dataset:} BD Crop and Vegetable Disease Data set containing 19.4 GB of images on 94 disease conditions on 10 major crop varieties that are planted in Bangladesh, such as Banana, Cauliflower, Corn, Cotton, Guava, Jute, Mango, Papaya, Potato, Rice, Sugarcane, Tea, Tomato and Wheat. The entire dataset comprises of healthy and diseased representatives of each crop type.
 
-\textbf{Model Architecture:} EfficientNet, which has been trained on ImageNet, is used to extract features. The structure of the classifier head is Global Average Pooling, Dense layer (256 units with ReLU), Dropout (0.3), and output layer with softmax activation.
+\textbf{Model Architecture:} ResNet50 pre-trained on ImageNet with a tailored classifier head composed of Linear layer (2048 to 512 units), ReLU activation, Dropout (0.2) and final Linear layer (512 to 94 units) to classify diseases. The deep residual framework allows efficient learning of features of crop disease images.
 
-\textbf{Training:} The model was trained on 50 epochs with the Adam optimizer (learn rate: 0.0001), categorical cross-entropy loss, and a batch size of 32. Patience of 10 epochs can be used to stop early without overfitting.
+\textbf{Model Source:} The already trained model is found on HuggingFace Hub (Saon110/bd-crop-vegetable-plant-disease-model), and it was trained with gradual unfreezing and a differential learning rate through 30 epochs (549 minutes of the training time) to reach the validation accuracy of 96.64 percent.
 
-\textbf{Performance:} Accuracy on test set is 96.5 percent, precision and recall are over 95 percent on most types of diseases. Model size: 47 MB (CropGuardian.h5), which allows it to be deployed to cloud infrastructure and its inference time is averagely fast (150ms per image on average).
+
+\textbf{Performance:} Accuracy of the test is 96.39 percent and it has great performance with a wide range of diseases. Size: around 98 MB (in PyTorch .pth format) to run on cloud hardware with a mean of 180ms to process each image, including preprocessing.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.48\textwidth]{model_compact_horizontal.png}}
+\caption{ResNet50 model architecture with custom classifier head. The backbone is pre-trained on ImageNet, and the custom classifier maps 2048 features to 94 disease classes across 10 Bangladesh crop types.}
+\label{fig:model_arch}
+\end{figure}
 
 \subsection{Mobile Application}
 
@@ -167,9 +181,10 @@ The detection process follows these steps:
 
 \textbf{Step 2 - Image Transmission:} ESP32-CAM uses HTTP POST compression with JPEG on the back-end server to pass captured image across quality and bandwidth.
 
-\textbf{Step 3 - Preprocessing:} Server crops and downsizes the image (EfficientNet-B3 input size) to 224x224 pixels and switches the pixel values to the range [0,1].
+\textbf{Step 3 - Preprocessing:} Server uses ResNet50 preprocessing pipeline: resizing to 256x256 pixels, center crop to 224x224 pixels, and Images Net statistics (mean=[0.485, 0.456, 0.225], std=[0.229, 0.224, 0.225]).
 
-\textbf{Step 4 - Inference:} output of CropGuardian.h5 model on image which has been preprocessed. EfficientNet backbone derives hierarchical features. Classifier head generates probability distribution on 38 disease categories.
+\textbf{Step 4 - Inference:} ResNet50 model does forward pass on preprocessed image. Deep residual backbone learns to extract hierarchical features using skip connections. Custom classifier head extracts the probability distribution in 94 disease conditions of 10 types of crops in Bangladesh.
+
 
 \textbf{Step 5 - Post-processing:} Prediction in terms of highest probability. Groq API gets disease name and type of crop, and confidence to give a treatment recommendation taking the form of a contextual guideline with types of medicine, how to apply the medicine, and preventive actions.
 
@@ -185,8 +200,8 @@ The deep sleep mode of ESP32 saves on resources in idle moments. Activation to t
 
 \subsection{Model Performance}
 
-CropGuardian deep learning model was tested by using the PlantVillage dataset at 80-10-10 train-validation-test split.
-Table \ref{tab:performance} constitutes the performance metrics.
+The disease detection model which was integrated on ResNet50 was tested on the BD Crop and Vegetable Plant Disease Dataset.
+Table \ref{tab:performance} shows the performance metrics of the pre-trained model.
 
 \begin{table}[htbp]
 \caption{Disease Detection Model Performance}
@@ -195,24 +210,30 @@ Table \ref{tab:performance} constitutes the performance metrics.
 \hline
 \textbf{Metric} & \textbf{Value} \\
 \hline
-Overall Accuracy & 96.5\% \\
+Test Accuracy & 96.39\% \\
 \hline
-Precision (avg) & 96.2\% \\
+Validation Accuracy & 96.64\% \\
 \hline
-Recall (avg) & 95.8\% \\
+Number of Classes & 94 \\
 \hline
-F1-Score (avg) & 96.0\% \\
+Crop Types Covered & 10 \\
 \hline
-Inference Time & 150 ms \\
+Inference Time & 180 ms \\
 \hline
-Model Size & 47 MB \\
+Model Size & 98 MB \\
 \hline
 \end{tabular}
 \label{tab:performance}
 \end{center}
 \end{table}
 
-The model shows a great performance in majority of the cases. Tomato Early Blight, Late Blight and Leaf Mold achieve above 98 percent accuracy. Lower performance is observed for visually similar diseases (e.g., Bacterial Spot vs Septoria Leaf Spot, 92-93 percent) due to subtle feature differences.
+The model exhibits a high level of performance in various types of crops and under conditions of different diseases. Common diseases to which high accuracy is obtained include Tomato Early Blight, Rice Blast and Potato Common Scab. The model is useful with the complexity of 94 classes of diseases, but it is difficult to discriminate between visually similar conditions in the same crop family because of small morphological differences.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.48\textwidth]{acuricy.png}}
+\caption{ResNet50 model performance metrics showing test accuracy (96.39\%) and validation accuracy (96.64\%) on the left, and distribution of 94 disease classes across 10 Bangladesh crop types on the right.}
+\label{fig:accuracy}
+\end{figure}
 
 \subsection{System Evaluation}
 
@@ -240,15 +261,9 @@ Treatment Accuracy & 65\% & 91\% \\
 \end{center}
 \end{table}
 
-\begin{figure}[htbp]
-\centerline{\includegraphics[width=0.45\textwidth]{system_architecture.png}}
-\caption{CropGuardian System Architecture showing hardware components, backend server, ML model, and mobile app integration.}
-\label{fig:architecture}
-\end{figure}
-
 \subsection{Real-World Deployment}
 
-In field experiments, the system was able to detect 47 instances of diseases in 3 crops (tomato, potato, pepper). True positive rate: 94 percent. False positive rate: 6 percent. End-to-end latency (capture to prediction) average: 2.3 seconds.
+The system was also successful in identifying 47 cases of diseases in field experiments that covered 3 bangladesh crop types which are tomatoes, potatoes and rice. True positive rate: 94 percent. False positive rate: 6 percent. Inference and model loading End-to-end latency (capture to prediction) was 2.5 seconds on average.
 
 Video streaming supported 15-18 FPS and the average over WiFi (802.11n) latency was 85ms. The mean reaction time of robot control was 62ms to button press to motor on. It had a battery life of 2.4 hours when used continuously.
 
@@ -268,7 +283,7 @@ Future improvements will involve: (1) GPS and automated navigation to allow the 
 
 \section{Conclusion}
 
-In this paper I introduced CropGuardian, which is an automated system which is IoT based and is used to detect and treat crop disease. The system has brought together mobile robotics, real-time video streaming, deep learning, and mobile application development to help farmers have a formidable gadget used in precision agriculture. The EfficientNet-based model reaches 96.5 percent precision with the PlantVillage data, whereas field experiments show the practical practicability with 85 percent decreased response time and 78 percent less manual input in fulfilling the traditional strategies.
+This paper has proposed CropGuardian, which is an automated IoT-based crop disease detection and treatment system. The system combines mobile robotics, real-time video streaming, deep learning, and a mobile application development to offer a complete precision agriculture system to the farmers. Using an off-the-shelf ResNet50-based model with 96.39 percent accuracy when trained on 94 Bangladesh-specific disease conditions using crops, field experiments show that the use of 85 percent reduced response time and 78 percent saved manual labor in comparison with conventional techniques.
 
 The modular structure of the system also makes it easy to adapt the system to various crops, diseases, and treatment mechanisms. With the further development of precision agriculture, such multi-purpose systems as CropGuardian will have more significant functions in the provision of food security and the optimal use of resources and minimization of environmental impact.
 
@@ -301,6 +316,8 @@ The researchers appreciate the support offered by the Bangladesh University of B
 \bibitem{b11} M. Tan and Q. V. Le, ``EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks,'' in Proc. 36th International Conference on Machine Learning (ICML), 2019, pp. 6105--6114.
 
 \bibitem{b12} D. P. Hughes and M. Salath{\'e}, ``An open access repository of images on plant health to enable the development of mobile disease diagnostics,'' arXiv preprint arXiv:1511.08060, 2015.
+
+\bibitem{b13} Saon110, ``BD Crop \& Vegetable Plant Disease Classification Model,'' HuggingFace Model Hub, 2024. [Online]. Available: https://huggingface.co/Saon110/bd-crop-vegetable-plant-disease-model
 
 \end{thebibliography}
 
