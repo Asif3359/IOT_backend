@@ -24,6 +24,8 @@ const char *websocket_path = "/ws/car";  // Changed to car endpoint
 // PWM settings
 const int freq = 30000;
 const int resolution = 8;
+int channelA = -1;
+int channelB = -1;
 
 // Default motor speed (0-255)
 uint8_t motorSpeed = 200;
@@ -42,9 +44,13 @@ void setup()
   pinMode(IN4, OUTPUT);
   pinMode(ENB, OUTPUT);
 
-  // Setup PWM - FIXED FOR ESP32 CORE v3.x
-  ledcAttach(ENA, freq, resolution);
-  ledcAttach(ENB, freq, resolution);
+  // Setup PWM channels (ESP32 core v3+)
+  channelA = ledcAttach(ENA, freq, resolution);
+  channelB = ledcAttach(ENB, freq, resolution);
+  if (channelA < 0 || channelB < 0)
+  {
+    Serial.println("⚠️  Failed to attach LEDC channels");
+  }
 
   // Stop motors initially
   stopCar();
@@ -109,12 +115,18 @@ void motorBStop()
 
 void setMotorASpeed(uint8_t speed)
 {
-  ledcWrite(ENA, speed);
+  if (channelA >= 0)
+  {
+    ledcWrite(channelA, speed);
+  }
 }
 
 void setMotorBSpeed(uint8_t speed)
 {
-  ledcWrite(ENB, speed);
+  if (channelB >= 0)
+  {
+    ledcWrite(channelB, speed);
+  }
 }
 
 // ===== CAR CONTROL FUNCTIONS ===== //
